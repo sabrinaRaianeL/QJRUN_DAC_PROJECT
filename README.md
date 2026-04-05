@@ -5,7 +5,7 @@ repositorio criado para armazenar projeto QJRUN da disciplina de DAC - 2026.1
 
 ## 📖 Sobre o Projeto
 
-O **QJRun** é um sistema desenvolvido para auxiliar um personal trainer na gestão de um clube de corridas, permitindo organizar alunos, turmas, eventos e pagamentos de forma centralizada e automatizada.
+O **QJRun** é um sistema desenvolvido para auxiliar personal trainers na gestão de um clube de corridas, permitindo organizar alunos, turmas, eventos e pagamentos de forma centralizada e automatizada.
 
 Atualmente, a gestão é feita de forma manual ou com ferramentas não integradas, o que gera ineficiência operacional e dificulta a escalabilidade do negócio.
 
