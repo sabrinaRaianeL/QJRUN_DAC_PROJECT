@@ -3,12 +3,9 @@ package com.qjrun.qjrun.entity;
 import jakarta.persistence.*;
 import lombok.Data;
 
-import java.time.LocalDate;
-
 @Entity
 @Data
-@Table(name="Alunos")
-public class Aluno {
+public class Administrador {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
@@ -17,13 +14,11 @@ public class Aluno {
     private String nome;
 
     @Column(nullable = false, unique = true)
-    private String matricula;
+    private String cpf;
 
     @Column(unique = true)
     private String email;
 
     private String telefone;
 
-    @Column(nullable = false)
-    private LocalDate dataNascimento;
 }
