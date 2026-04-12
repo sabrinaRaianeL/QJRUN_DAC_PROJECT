@@ -26,4 +26,13 @@ public class Aluno {
 
     @Column(nullable = false)
     private LocalDate dataNascimento;
+
+    // CARDINALIDADE
+    @ManyToOne
+    @JoinColumn(name = "plano_id", nullable = false)
+    private Plano plano;
+
+    @ManyToOne
+    @JoinColumn(name = "turma_id")
+    private Turma turma;
 }
