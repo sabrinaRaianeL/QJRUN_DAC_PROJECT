@@ -1,10 +1,11 @@
 package com.qjrun.qjrun.entity;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.qjrun.qjrun.enums.NivelTurma;
 import jakarta.persistence.*;
 import lombok.*;
 
-import java.math.BigDecimal;
+import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -14,29 +15,33 @@ import java.util.List;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-@Table(name = "Planos")
-public class Plano {
+@Table(name = "Turmas")
+public class Turma {
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @Enumerated(EnumType.STRING)
     @Column(nullable = false)
-    private String tipo;
-
-    private String descricao;
-
-    @Column(nullable = false)
-    private BigDecimal preco;
+    private NivelTurma nivelTurma;
 
     @Column(nullable = false)
-    private Integer duracaoMeses;
+    private String nome;
+
+    @Column(nullable = false)
+    private LocalTime horarioInicio;
+
+    @Column(nullable = false)
+    private LocalTime horarioTermino;
 
     @Builder.Default
     @Column(nullable = false)
-    private boolean ativo = true;
+    private Boolean ativo = true;
 
     // CARDINALIDADE
-    @OneToMany(mappedBy = "plano")
+    @OneToMany(mappedBy = "turma")
     @JsonIgnore
     private List<Aluno> alunos = new ArrayList<>();
+
 }
