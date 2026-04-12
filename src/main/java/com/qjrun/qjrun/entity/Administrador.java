@@ -1,10 +1,14 @@
 package com.qjrun.qjrun.entity;
 
 import jakarta.persistence.*;
-import lombok.Data;
+import lombok.*;
 
 @Entity
-@Data
+@Getter
+@Setter
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
 public class Administrador {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -21,6 +25,7 @@ public class Administrador {
 
     private String telefone;
 
+    @Builder.Default
     @Column(nullable = false)
     private boolean ativo = true;
 }
