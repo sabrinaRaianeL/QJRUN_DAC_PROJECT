@@ -8,8 +8,8 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
 @RestController
-@RequestMapping("/aluno")
 @RequiredArgsConstructor
+@RequestMapping("/aluno")
 public class AlunoController {
 
     private final AlunoService alunoService;
@@ -31,7 +31,12 @@ public class AlunoController {
 
     @DeleteMapping("/{id}")
     public void delete(@PathVariable long id) {
-        alunoService.delete(id);
+        alunoService.desativar(id);
+    }
+
+    @PutMapping("/{id}")
+    public Aluno update(@PathVariable Long id, @RequestBody Aluno aluno) {
+        return alunoService.update(id, aluno);
     }
 
 }
