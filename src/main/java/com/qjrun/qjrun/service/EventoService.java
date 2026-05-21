@@ -3,7 +3,9 @@ package com.qjrun.qjrun.service;
 import com.qjrun.qjrun.entity.Evento;
 import lombok.RequiredArgsConstructor;
 import com.qjrun.qjrun.repository.EventoRepository;
+import org.springframework.beans.BeanUtils;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
@@ -13,34 +15,47 @@ public class EventoService {
 
     private final EventoRepository eventoRepository;
 
-    public List<Evento> listar() {
-        return eventoRepository.findAllByAtivoTrue();
-    }
-
-    public Evento create(Evento evento) {
+    // CREATE
+    @Transactional
+    public Evento save(Evento evento) {
+        evento.setId(null); // impede atualização acidental de um evento que já existe
+        evento.setAtivo(true); // garante que novos eventos "nasçam" ativos
         return eventoRepository.save(evento);
     }
 
-    public Evento buscar(Long id) {
+    // READ
+    public List<Evento> findAll() {
+        return eventoRepository.findAllByAtivoTrue();
+    }
+
+    // READ
+    public Evento findById(Long id) {
         return eventoRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Evento não encontrado."));
     }
 
-    public void deletar(Long id) {
-        Evento evento = buscar(id);
+    // UPDATE
+    @Transactional
+    public Evento update(Long id, Evento eventoAtualizado) {
+        Evento eventoExistente = findById(id);
+
+        atualizarDadosBase(eventoAtualizado, eventoExistente);
+
+        return eventoRepository.save(eventoExistente);
+    }
+
+    // DELETE
+    @Transactional
+    public void desativar(Long id) {
+        Evento evento = findById(id);
         evento.setAtivo(false);
         eventoRepository.save(evento);
     }
-    public Evento atualizar(Long id, Evento novoEvento) {
-        Evento evento = buscar(id);
 
-        evento.setNome(novoEvento.getNome());
-        evento.setDescricao(novoEvento.getDescricao());
-        evento.setLocal(novoEvento.getLocal());
-        evento.setData(novoEvento.getData());
-        evento.setHorario(novoEvento.getHorario());
-        evento.setVagas(novoEvento.getVagas());
+    // MÉTODOS AUXILIARES
+    private void atualizarDadosBase(Evento eventoAtualizado, Evento eventoExistente) {
 
-        return eventoRepository.save(evento);
+        // Copia tudo do JSON para o banco, menos o ID e o status
+        BeanUtils.copyProperties(eventoAtualizado, eventoExistente, "id", "ativo");
     }
 }

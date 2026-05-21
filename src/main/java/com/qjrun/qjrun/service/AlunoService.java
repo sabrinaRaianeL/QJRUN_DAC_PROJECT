@@ -4,9 +4,12 @@ package com.qjrun.qjrun.service;
 import com.qjrun.qjrun.entity.Aluno;
 import com.qjrun.qjrun.entity.Plano;
 import com.qjrun.qjrun.entity.Turma;
+import com.qjrun.qjrun.enums.StatusPagamento;
 import com.qjrun.qjrun.repository.AlunoRepository;
+import com.qjrun.qjrun.repository.PagamentoRepository;
 import com.qjrun.qjrun.repository.PlanoRepository;
 import com.qjrun.qjrun.repository.TurmaRepository;
+import com.qjrun.qjrun.util.AuthUtil;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -20,46 +23,32 @@ public class AlunoService {
     private final AlunoRepository alunoRepository;
     private final PlanoRepository planoRepository;
     private final TurmaRepository turmaRepository;
+    private final PagamentoRepository pagamentoRepository;
 
-    public List<Aluno> findAll() {
-        return alunoRepository.findAllByAtivoTrue();
-    }
 
+    // CREATE
     @Transactional
-    public Aluno save(Aluno aluno) {
-
-        if (aluno.getPlano() == null || aluno.getPlano().getId() == null) {
-            throw new RuntimeException("O aluno deve estar vinculado a um plano.");
-        }
-
-        Plano plano = planoRepository.findById(aluno.getPlano().getId())
-                .orElseThrow(() -> new RuntimeException("Plano não encontrado."));
-
-        aluno.setPlano(plano);
-
-        if (aluno.getTurma() != null && aluno.getTurma().getId() != null) {
-            Turma turma = turmaRepository.findById(aluno.getTurma().getId())
-                    .orElseThrow(() -> new RuntimeException("Turma não encontrada."));
-            aluno.setTurma(turma);
-        } else {
-            aluno.setTurma(null);
-        }
-
+    public Aluno save(Aluno aluno, String perfilUsuario) {
+        aluno.setId(null);
         aluno.setAtivo(true);
+
+        vincularPlanoNaCriacao(aluno);
+        vincularTurmaNaCriacao(aluno, perfilUsuario);
 
         return alunoRepository.save(aluno);
     }
 
+    // READ
+    public List<Aluno> findAll() {
+        return alunoRepository.findAllByAtivoTrue();
+    }
+
+    // READ
     public Aluno findById(Long id) {
         return alunoRepository.findById(id).orElseThrow(()-> new RuntimeException("Aluno não encontrado!"));
     }
 
-    public void desativar(Long id) {
-        Aluno aluno = findById(id);
-        aluno.setAtivo(false);
-        alunoRepository.save(aluno);
-    }
-
+    // UPDATE
     @Transactional
     public Aluno update(Long id, Aluno alunoAtualizado) {
         Aluno alunoExistente = findById(id);
@@ -73,21 +62,55 @@ public class AlunoService {
         return alunoRepository.save(alunoExistente);
     }
 
+    // DELETE
+    @Transactional
+    public void desativar(Long id, String perfilUsuario) {
+
+        AuthUtil.exigirAdmin(perfilUsuario);
+
+        Aluno aluno = findById(id);
+
+        if(!"ROLE_ALUNO".equals(perfilUsuario)){
+            throw new RuntimeException("aluno já desativado!");
+        }
+
+        //verificacao para caso possua pendencia, não ser removido/deletado
+        boolean possuiPendencia = pagamentoRepository.findByAlunoId(id)
+                .stream()
+                .anyMatch(pagamento ->
+                        pagamento.getStatus() == StatusPagamento.PENDENTE || pagamento.getStatus() == StatusPagamento.ATRASADO
+                );
+        //excecao para ser lancado caso o aluno tenha pendencia ao ser deletado
+        if (possuiPendencia) {
+            throw new RuntimeException(
+                    "Não é possível cancelar matrícula com pagamentos pendentes ou atrasados."
+            );
+        }
+
+        if (!aluno.getAtivo()) {
+            throw new RuntimeException("Aluno já está desativado.");
+        }
+        aluno.setAtivo(false);
+        alunoRepository.save(aluno);
+    }
+
+    // REGRAS DE ATUALIZAÇÃO
+
     private void validarEAtualizarEmail(Aluno alunoAtualizado, Aluno alunoExistente) {
 
         String novoEmail = alunoAtualizado.getEmail();
 
-        if (novoEmail != null && !novoEmail.equals(alunoExistente.getEmail())) {
-
-            if (alunoRepository.findByEmail(novoEmail).isPresent()) {
-                throw new RuntimeException("Ops! O e-mail " + novoEmail + " já está sendo usado!");
-            }
-
-            alunoExistente.setEmail(novoEmail);
+        if (novoEmail == null || novoEmail.isBlank() || novoEmail.equals(alunoExistente.getEmail())) {
+            return;
         }
+
+        if (alunoRepository.findByEmail(novoEmail).isPresent()) {
+            throw new RuntimeException("Ops! O e-mail " + novoEmail + " já está sendo usado!");
+        }
+
+        alunoExistente.setEmail(novoEmail);
     }
 
-    //MÉTODOS DE ATUALIZAÇÃO
     private void atualizarDadosBase(Aluno alunoAtualizado, Aluno alunoExistente) {
 
         alunoExistente.setNome(alunoAtualizado.getNome());
@@ -110,5 +133,37 @@ public class AlunoService {
 
             alunoExistente.setPlano(novoPlano);
         }
+    }
+
+    // REGRAS DE CRIAÇÃO
+    private void vincularPlanoNaCriacao(Aluno aluno) {
+
+        if (aluno.getPlano() == null || aluno.getPlano().getId() == null) {
+            throw new RuntimeException("O aluno deve estar vinculado a um plano.");
+        }
+
+        Plano plano = planoRepository.findById(aluno.getPlano().getId())
+                .orElseThrow(() -> new RuntimeException("Plano não encontrado."));
+
+        aluno.setPlano(plano);
+    }
+
+    private void vincularTurmaNaCriacao(Aluno aluno, String perfilUsuario) {
+
+        // Regra de negócio: se for o próprio aluno se cadastrando, a atribuição a uma turma é bloqueada (só o admin pode atribuir um aluno a uma turma)
+        if ("ROLE_ALUNO".equals(perfilUsuario)) {
+            aluno.setTurma(null);
+            return;
+        }
+
+        // Cláusula de Guarda do Admin: Se não mandou turma (ou mandou sem ID), zera e sai
+        if (aluno.getTurma() == null || aluno.getTurma().getId() == null) {
+            aluno.setTurma(null);
+            return;
+        }
+
+        Turma turma = turmaRepository.findById(aluno.getTurma().getId()).orElseThrow(() -> new RuntimeException("Turma não encontrada."));
+
+        aluno.setTurma(turma);
     }
 }

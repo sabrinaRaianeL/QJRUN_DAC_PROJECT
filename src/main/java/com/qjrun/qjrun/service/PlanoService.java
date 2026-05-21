@@ -15,18 +15,23 @@ public class PlanoService {
 
     private final PlanoRepository planoRepository;
 
+    // CREATE
+    @Transactional
     public Plano save(Plano plano) {
         return planoRepository.save(plano);
     }
 
+    // READ
     public List<Plano> findAll() {
         return planoRepository.findAllByAtivoTrue();
     }
 
+    // READ
     public Plano findById(Long id) {
         return planoRepository.findById(id).orElseThrow(() -> new RuntimeException("Esse plano não existe!"));
     }
 
+    // UPDATE
     @Transactional
     public Plano update(Long id, Plano dadosAtualizados) {
         Plano planoAntigo = findById(id);
@@ -42,6 +47,8 @@ public class PlanoService {
         return planoRepository.save(novoPlano);
     }
 
+    // DELETE
+    @Transactional
     public void desativar(Long id) {
         Plano plano = findById(id);
         plano.setAtivo(false);

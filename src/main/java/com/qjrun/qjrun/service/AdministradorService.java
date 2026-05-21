@@ -4,9 +4,9 @@ import com.qjrun.qjrun.entity.Administrador;
 import com.qjrun.qjrun.repository.AdministradorRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
-import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
@@ -14,43 +14,58 @@ public class AdministradorService {
 
     private final AdministradorRepository administradorRepository;
 
+    // CREATE
+    @Transactional
     public Administrador save(Administrador administrador) {
+        administrador.setId(null); // impede o envio de um ID prevenindo a atualização de um registro que já existe
+        administrador.setAtivo(true);
         return administradorRepository.save(administrador);
     }
 
+    // READ
     public List<Administrador> findAll() {
-        return administradorRepository.findAll();
+        return administradorRepository.findAllByAtivoTrue();
     }
 
-    public Administrador findById(long id) {
+    // READ
+    public Administrador findById(Long id) {
         return administradorRepository.findById(id).orElseThrow(() -> new RuntimeException("Administrador não encontrado!"));
     }
 
+    // UPDATE
+    @Transactional
     public Administrador update(Long id, Administrador administradorAtualizado) {
-        Administrador administrador =  findById(id);
+        Administrador administradorExistente =  findById(id);
 
-        administrador.setNome(administradorAtualizado.getNome());
-        administrador.setTelefone(administradorAtualizado.getTelefone());
+        administradorExistente.setNome(administradorAtualizado.getNome());
+        administradorExistente.setTelefone(administradorAtualizado.getTelefone());
 
-        String novoEmail = administradorAtualizado.getEmail();
-        String emailAtual =  administrador.getEmail();
+        validarEAtualizarEmail(administradorAtualizado, administradorExistente);
 
-        if (novoEmail != null && !novoEmail.equals(emailAtual)) {
-            Optional<Administrador> donoDoEmail = administradorRepository.findByEmail(novoEmail);
-
-            if (donoDoEmail.isPresent()) {
-                throw new RuntimeException("Ops! O e-mail " + novoEmail + " já está sendo usado!");
-            }
-
-            administrador.setEmail(novoEmail);
-        }
-
-        return administradorRepository.save(administrador);
+        return administradorRepository.save(administradorExistente);
     }
 
+    // DELETE
+    @Transactional
     public void inativar(Long id) {
         Administrador administrador = findById(id);
         administrador.setAtivo(false);
         administradorRepository.save(administrador);
+    }
+
+    // METODOS AUXILIARES
+    private void validarEAtualizarEmail(Administrador administradorAtualizado, Administrador administradorExistente) {
+        String novoEmail = administradorAtualizado.getEmail();
+
+        // Se não tiver nenhuma alteração real sai do método
+        if(novoEmail == null || novoEmail.isBlank() || novoEmail.equals(administradorExistente.getEmail())) {
+            return;
+        }
+
+        if(administradorRepository.findByEmail(novoEmail).isPresent()) {
+            throw new RuntimeException("Ops! O e-mail " + novoEmail + " já está sendo usado!");
+        }
+
+        administradorExistente.setEmail(novoEmail);
     }
 }
